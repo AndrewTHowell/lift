@@ -1,18 +1,10 @@
 package lift
 
 import (
-	"fmt"
-	"os"
-	"os/exec"
 	"time"
 )
 
-func NewLift(id int, minFloor, maxFloor int) *Lift {
-	floors := make([]int, maxFloor-minFloor+1)
-	for i := range floors {
-		floors[i] = minFloor + i
-	}
-
+func newLift(id string, floors []int) *Lift {
 	lift := &Lift{
 		id:           id,
 		currentFloor: 0,
@@ -25,7 +17,7 @@ func NewLift(id int, minFloor, maxFloor int) *Lift {
 }
 
 type Lift struct {
-	id           int
+	id           string
 	currentFloor int
 	targetFloor  int // TODO: more than one target floor
 	floors       []int
@@ -48,18 +40,17 @@ func (l *Lift) Start() {
 				return
 			case <-ticker.C:
 				l.move()
-				l.report()
 				continue
 			}
 		}
 	}()
-	return
 }
 
 func (l *Lift) Stop() {
 	if l.running != nil {
 		l.running <- false
 	}
+	l.status = stationary
 }
 
 func (l *Lift) SetTargetFloor(floorNumber int) {
@@ -95,27 +86,6 @@ func (l *Lift) move() {
 	}
 }
 
-func (l *Lift) report() {
-	liftColumn := make([]string, len(l.floors))
-	for i, floor := range l.floors {
-		if l.currentFloor == floor {
-			liftColumn[i] = fmt.Sprint(l.id)
-			if l.status == ascending {
-				liftColumn[i+1] = "▲"
-			} else if l.status == descending {
-				liftColumn[i-1] = "▼"
-			}
-		}
-	}
-
-	var str string
-	for i := len(liftColumn) - 1; i > -1; i-- {
-		str += fmt.Sprintf("%2d| %s\n", l.floors[i], liftColumn[i])
-	}
-	wipeStdout()
-	fmt.Print(str)
-}
-
 type status string
 
 const (
@@ -123,9 +93,3 @@ const (
 	descending status = "descending"
 	ascending  status = "ascending"
 )
-
-func wipeStdout() {
-	cmd := exec.Command("cmd", "/c", "cls")
-	cmd.Stdout = os.Stdout
-	_ = cmd.Run()
-}

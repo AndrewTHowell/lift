@@ -7,14 +7,23 @@ import (
 )
 
 func main() {
-	l := lift.NewLift(1, -1, 5)
-	defer l.Stop()
+	controller := lift.NewController(-1, 5)
 
-	l.SetTargetFloor(5)
+	lift1 := controller.AddLift()
+	defer lift1.Stop()
+	lift2 := controller.AddLift()
+	defer lift2.Stop()
+
+	lift1.SetTargetFloor(5)
+
+	time.Sleep(1 * time.Second)
+
+	lift2.SetTargetFloor(-1)
 
 	time.Sleep(7 * time.Second)
 
-	l.SetTargetFloor(-1)
+	lift1.SetTargetFloor(-1)
+	lift2.SetTargetFloor(3)
 
-	time.Sleep(7 * time.Second)
+	time.Sleep(8 * time.Second)
 }
