@@ -1,14 +1,14 @@
 package lift
 
 import (
+	"math"
 	"time"
 )
 
-func newLift(id string, floors []int) *Lift {
+func newLift(id string) *Lift {
 	lift := &Lift{
 		id:           id,
 		currentFloor: 0,
-		floors:       floors,
 		status:       stationary,
 		door:         newDoor(),
 	}
@@ -53,10 +53,12 @@ func (l *Lift) Stop() {
 	l.status = stationary
 }
 
-func (l *Lift) SetTargetFloor(floorNumber int) {
-	if l.floors[0] <= floorNumber && floorNumber <= l.floors[len(l.floors)-1] {
-		l.targetFloor = floorNumber
-	}
+func (l *Lift) sendToFloor(floor int) {
+	l.targetFloor = floor
+}
+
+func (l *Lift) distanceFrom(floor int) int {
+	return int(math.Abs(float64(l.currentFloor - floor)))
 }
 
 func (l *Lift) move() {

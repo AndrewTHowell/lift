@@ -7,28 +7,50 @@ import (
 	"time"
 )
 
-func NewController(minFloor, maxFloor int) *Controller {
-	floors := make([]int, maxFloor-minFloor+1)
-	for i := range floors {
-		floors[i] = minFloor + i
+func NewController(minFloor, maxFloor, numberOfLifts int) *Controller {
+	c := &Controller{
+		minFloor:     minFloor,
+		maxFloor:     maxFloor,
+		FloorButtons: make(map[int]*Button, maxFloor-minFloor+1),
+		Lifts:        make([]*Lift, numberOfLifts),
 	}
-
-	controller := &Controller{
-		floors: floors,
+	defer c.start()
+	for floor := minFloor; floor <= maxFloor; floor++ {
+		c.FloorButtons[floor] = &Button{floor}
 	}
-	controller.start()
-	return controller
+	for i := range c.Lifts {
+		c.Lifts[i] = newLift(toLetter(i))
+	}
+	return c
 }
 
 type Controller struct {
-	floors []int
-	lifts  []*Lift
+	minFloor, maxFloor int
+	FloorButtons       map[int]*Button
+	Lifts              []*Lift
 }
 
-func (c *Controller) AddLift() *Lift {
-	lift := newLift(toLetter(len(c.lifts)), c.floors)
-	c.lifts = append(c.lifts, lift)
-	return lift
+func (c *Controller) Stop() {
+	for _, lift := range c.Lifts {
+		lift.Stop()
+	}
+}
+
+func (c *Controller) Press(button *Button) {
+	button.Press(c)
+}
+
+func (c *Controller) callLiftToFloor(floor int) {
+	closestLift := c.Lifts[0]
+	closestLiftDistance := c.Lifts[0].distanceFrom(floor)
+	for _, lift := range c.Lifts {
+		distance := lift.distanceFrom(floor)
+		if distance < closestLiftDistance {
+			closestLift = lift
+			closestLiftDistance = distance
+		}
+	}
+	closestLift.sendToFloor(floor)
 }
 
 func (c *Controller) start() {
@@ -48,19 +70,18 @@ func (c *Controller) start() {
 
 func (c Controller) report() {
 	var str string
-	for i := len(c.floors) - 1; i > -1; i-- {
-		floor := c.floors[i]
-		str += fmt.Sprintf("%2d|", floor)
+	for floorNumber := c.maxFloor; floorNumber >= c.minFloor; floorNumber-- {
+		str += fmt.Sprintf("%2d|", floorNumber)
 
-		for _, l := range c.lifts {
+		for _, l := range c.Lifts {
 			lift := *l
 
 			str += " "
-			if lift.currentFloor == floor {
+			if lift.currentFloor == floorNumber {
 				str += lift.id
-			} else if lift.status == ascending && lift.currentFloor == floor-1 {
+			} else if lift.status == ascending && lift.currentFloor == floorNumber-1 {
 				str += "▲"
-			} else if lift.status == descending && lift.currentFloor == floor+1 {
+			} else if lift.status == descending && lift.currentFloor == floorNumber+1 {
 				str += "▼"
 			} else {
 				str += " "
@@ -75,7 +96,7 @@ func (c Controller) report() {
 const abc = "ABCDEFGHIJKLMNOPQRSTUVWXYZ"
 
 func toLetter(i int) string {
-	return abc[i-1 : i]
+	return abc[i : i+1]
 }
 
 func wipeStdout() {
